@@ -1,3 +1,4 @@
+from __future__ import print_function
 from ariadne import ObjectType, QueryType, MutationType, gql, make_executable_schema
 from ariadne.asgi import GraphQL
 from asgi_lifespan import Lifespan, LifespanMiddleware
@@ -9,6 +10,10 @@ import requests
 from dotenv import load_dotenv
 import os
 
+# Google OR Tools
+
+from ortools.linear_solver import pywraplp
+    
 # Load environment variables
 load_dotenv()
 
@@ -71,57 +76,129 @@ def getClient():
 # Define types using Schema Definition Language (https://graphql.org/learn/schema/)
 # Wrapping string in gql function provides validation and better error traceback
 type_defs = gql("""
-    type Query {
-        people: [Person!]!
-    }
 
-    type Person {
-        firstName: String
-        lastName: String
-        age: Int
-        fullName: String
-    }
+type RealLinearCoefficient {
+  id: ID!
+  value: Float!
+}
+
+input RealLinearCoefficientAsInput {
+  id: ID!
+  value: Float!
+}
+
+type RealLinearConstraint {
+  id: ID!
+  lowerBound: Float
+  upperBound: Float
+  coefficients: [RealLinearCoefficient!]
+}
+
+input RealLinearConstraintAsInput {
+  id: ID!
+  lowerBound: Float
+  upperBound: Float
+  coefficients: [RealLinearCoefficientAsInput!]!
+}
+
+type RealLinearObjective {
+  id: ID!
+  coefficients: [RealLinearCoefficient!]
+  maximize: Boolean!
+}
+
+input RealLinearObjectiveAsInput {
+  id: ID!
+  coefficients: [RealLinearCoefficientAsInput!]!
+  maximize: Boolean!
+}
+
+type RealLinearSolution {
+  id: ID!
+  objectiveValue: Float!
+  varValues: [RealLinearVarValue!]!
+}
+
+type RealLinearVar {
+  id: ID!
+  lowerBound: Float
+  upperBound: Float
+}
+
+input RealLinearVarAsInput {
+  id: ID!
+  lowerBound: Float
+  upperBound: Float
+}
+
+type RealLinearVarValue {
+  id: ID!
+  value: Float!
+}
+
+###
+
+type Query {
+    solveRealLinearProblem(
+        vars: [RealLinearVarAsInput!]!,
+        constraints: [RealLinearConstraintAsInput!]!,
+        objective: RealLinearObjectiveAsInput!
+        ): RealLinearSolution!
+}
 """)
 
 # Map resolver functions to Query fields using QueryType
 query = QueryType()
 
 # Resolvers are simple python functions
-@query.field("people")
-def resolve_people(_, info):
+@query.field("solveRealLinearProblem")
+def resolve_solveRealLinearProblem(*_, vars, constraints, objective):
 
-    # # A resolver can access the graphql client via the context.
-    # client = info.context["client"]
+    id = 'GLOP_LINEAR_PROGRAMMING'
 
-    # # Query all maana services.
-    # result = client.execute('''
-    # {
-    #     allServices {
-    #         id
-    #         name
-    #     }
-    # }
-    # ''')
+    # Create the linear solver with the GLOP backend.
+    solver = pywraplp.Solver(id,
+                             pywraplp.Solver.GLOP_LINEAR_PROGRAMMING)
 
-    # print(result)
+    # Cretae variables
+    varDict = {}
+    for var in vars:
+        varDict[var["id"]] = solver.NumVar(
+            var["lowerBound"],
+            var["upperBound"],
+            var["id"])
 
-    return [
-        {"firstName": "Marie", "lastName": "Curie", "age": 21},
-        {"firstName": "Rubab", "lastName": "Nedzo", "age": 24},
-    ]
+    # Create constraints
+    for constraint in constraints:
+        ct = solver.Constraint(
+            constraint["lowerBound"],
+            constraint["upperBound"],
+            constraint["id"])
+        for coef in constraint["coefficients"]:
+            ct.SetCoefficient(varDict[coef["id"]], coef["value"])
 
+    # Create the objective function
+    obj = solver.Objective()
+    for coef in objective["coefficients"]:
+        obj.SetCoefficient(varDict[coef["id"]], coef["value"])
+    if objective["maximize"]:
+        obj.SetMaximization()
 
-# Map resolver functions to custom type fields using ObjectType
-person = ObjectType("Person")
+    solver.Solve()
 
-
-@person.field("fullName")
-def resolve_person_fullname(person, *_):
-    return "%s %s" % (person["firstName"], person["lastName"])
+    varValues = []
+    for key, item in varDict.items():
+        varValues.append({"id": key, "value": item.solution_value()})
+ 
+    return {
+        "id": id,
+        "objectiveValue": obj.Value(),
+        "varValues": varValues
+    }
 
 
 # Create executable GraphQL schema
-schema = make_executable_schema(type_defs, [query, person])
+schema = make_executable_schema(type_defs, [query])
 
 # --- ASGI app
 

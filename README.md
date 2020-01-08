@@ -1,14 +1,15 @@
-# Maana Q Knowledge Microservice Template: Python (Ariadne)
+# Maana Optimization Google
 
 - Uses the [Ariadne GraphQL framework](https://ariadnegraphql.org/)
 - Uses the [ASGI Lifespan middlware](https://pypi.org/project/asgi-lifespan/)
 - Concurrency, app server, and containerization is provided by the [Uvicorn+Gunicorn Docker](https://github.com/tiangolo/uvicorn-gunicorn-docker) base image
+- Wraps and maps the [Google OR Tools for Python](https://developers.google.com/optimization/introduction/python)
 
 ## Features
 
 ### Maana Q Client (i.e., peer-to-peer)
 
-It is possible, though not generally preferred, for services to depend directly on other services, passing requests through a secure CKG endpoint.  This template includes the necessary authentication code for your convenience.  Simply supply environment settings and use the `client` from the GraphQL context:
+It is possible, though not generally preferred, for services to depend directly on other services, passing requests through a secure CKG endpoint. This template includes the necessary authentication code for your convenience. Simply supply environment settings and use the `client` from the GraphQL context:
 
 ```bash
 #
@@ -36,7 +37,7 @@ AUTH_SECRET=
 
 # Auth audience for JWT
 # Set to same value as REACT_APP_PORTAL_AUTH_IDENTIFIER in Maana Q deployment ENVs)
-# NOTE: For use of keycloak in this app, this value should match both the realm and audience values. 
+# NOTE: For use of keycloak in this app, this value should match both the realm and audience values.
 AUTH_IDENTIFIER=
 ```
 
@@ -63,6 +64,7 @@ And, in your resolver:
 
 ```
 pip install uvicorn gunicorn ariadne graphqlclient asgi-lifespan python-dotenv requests
+pip install ortools
 ```
 
 ## Containerize
@@ -70,7 +72,7 @@ pip install uvicorn gunicorn ariadne graphqlclient asgi-lifespan python-dotenv r
 Then you can build your image from the directory that has your Dockerfile, e.g:
 
 ```
-docker build -t my-service ./
+docker build -t maana-optimization-google ./
 ```
 
 ## Run Debug Locally
@@ -90,7 +92,7 @@ For details, please refer to the [official documentation](https://github.com/tia
 To run the GraphQL service locally (Via Docker):
 
 ```
-docker run -it -p 4000:80 -t my-service
+docker run -it -p 4000:80 -t maana-optimization-google
 ```
 
 and visit http://0.0.0.0:4000
@@ -100,7 +102,7 @@ and visit http://0.0.0.0:4000
 To run the GraphQL service via Docker with hot reload:
 
 ```
-docker run -it -p 4000:80 -v $(pwd):/app my-service /start-reload-docker.sh
+docker run -it -p 4000:80 -v $(pwd):/app maana-optimization-google /start-reload-docker.sh
 ```
 
 and visit http://0.0.0.0:4000

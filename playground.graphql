@@ -1,0 +1,28 @@
+{
+  solveRealLinearProblem(
+    vars: [
+      { id: "x", lowerBound: 0, upperBound: 1 }
+      { id: "y", lowerBound: 0, upperBound: 2 }
+    ]
+    constraints: [
+      {
+        id: "ct"
+        lowerBound: 0
+        upperBound: 2
+        coefficients: [{ id: "x", value: 1 }, { id: "y", value: 1 }]
+      }
+    ]
+    objective: {
+      id: "obj"
+      coefficients: [{ id: "x", value: 3 }, { id: "y", value: 1 }]
+      maximize: true
+    }
+  ) {
+    id
+    objectiveValue
+    varValues {
+      id
+      value
+    }
+  }
+}
